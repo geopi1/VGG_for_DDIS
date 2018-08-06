@@ -10,6 +10,7 @@ from CX.CX_helper import *
 from model import *
 from utils.FetchManager import *
 import scipy
+import imageio
 import scipy.misc
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
@@ -90,9 +91,6 @@ def load(dir):
     return ckpt
 
 
-# load the model from the dir defined in config.py
-# calls load above
-ckpt = load(config.TRAIN.out_dir)
 
 
 # ---------------------------------------------------
@@ -176,22 +174,24 @@ if config.TRAIN.is_train:
             # Append curDirloss to total Epoch_loss of current epoch
             Epoch_g_loss[cur_dir]=np.mean(g_loss[np.where(g_loss)])
 
-            # -------------- save the model ------------------
-        # we use loop with try and catch to verify that the save was done.
-        # when saving on Dropbox it sometimes cause an error.
-        for i in range(5):
-            try:
-                TrainLogFolder=os.path.join(result_dir, "TrainLogs")
-                if not os.path.exists(epoch_dir):
-                    os.makedirs(epoch_dir)
-                if not os.path.exists(TrainLogFolder):
-                    os.makedirs(TrainLogFolder)
-                # save the mean of the epochs train loss
-                helper.write_loss_in_txt(TrainLogFolder,Epoch_g_loss, epoch)
-                if epoch % config.TRAIN.save_every_nth_epoch==0:
-                    saver.save(sess, os.path.join(epoch_dir,"model.ckpt"))
-            except:
-                time.sleep(1)
+        # -------------- save the model ------------------
+        # save only every nth epoch (save space)
+        if epoch % config.TRAIN.save_every_nth_epoch ==0 :
+            # we use loop with try and catch to verify that the save was done.
+            # when saving on Dropbox it sometimes cause an error.
+            for i in range(5):
+                try:
+                    TrainLogFolder=os.path.join(result_dir, "TrainLogs")
+                    if not os.path.exists(epoch_dir):
+                        os.makedirs(epoch_dir)
+                    if not os.path.exists(TrainLogFolder):
+                        os.makedirs(TrainLogFolder)
+                    # save the mean of the epochs train loss
+                    helper.write_loss_in_txt(TrainLogFolder,Epoch_g_loss, epoch)
+                    if epoch % config.TRAIN.save_every_nth_epoch==0:
+                        saver.save(sess, os.path.join(epoch_dir,"model.ckpt"))
+                except:
+                    time.sleep(1)
 
         # ------------ validation loop -------------------------
         Val_losses_dict = {}
@@ -225,7 +225,7 @@ if config.TRAIN.is_train:
                     print(log)
             # Finished current validation folder - add to log
             Val_losses_dict[cur_val_dir]=np.mean(val_g_loss[np.where(val_g_loss)])
-        #finished all validation folders - create log file
+        # finished all validation folders - create log file
         for i in range(5):
             try:
                 ValLogFolder = os.path.join(result_dir, "ValidationLogs")
@@ -243,72 +243,83 @@ if config.TRAIN.is_train:
 #                      test
 # ---------------------------------------------------
 if config.TEST.is_test:
-    test_dir_path = os.path.join(config.base_dir, config.TEST.A_data_dir)
-    test_dir_list = os.listdir(test_dir_path)
+    for model in range(0, config.TRAIN.num_epochs + 1, config.TRAIN.save_every_nth_epoch):
+        # load the model from the dir defined in config.py
+        # calls load above
+        ckpt = load(os.path.join(config.base_dir, config.TRAIN.out_dir, "%04d" % model))
+        print(ckpt)
+        test_dir_path = os.path.join(config.base_dir, config.TEST.A_data_dir)
+        test_dir_list = os.listdir(test_dir_path)
 
-    for TestDirIndex in np.random.permutation(len(test_dir_list)):
-        cur_test_dir = test_dir_list[TestDirIndex]
-        cur_test_path = os.path.join(test_dir_path, cur_test_dir)
+        for TestDirIndex in np.random.permutation(len(test_dir_list)):
+            cur_test_dir = test_dir_list[TestDirIndex]
+            cur_test_path = os.path.join(test_dir_path, cur_test_dir)
 
-        # list all the files in the folder
-        file_list = [str(j).split(".")[0] for j in os.listdir(cur_test_path) if (j.endswith(".jpg") and (len(j.split("_")) > 3))]
+            # list all the files in the folder
+            file_list = [str(j).split(".")[0] for j in os.listdir(cur_test_path) if (j.endswith(".jpg") and (len(j.split("_")) > 3))]
 
-        # randomly pick a true crop to compare the crops against
-        true_crop = "%08d" % np.random.randint(1, int(file_list[-1].split("_")[0])) + "_true_crop"
-        true_crop_path = os.path.join(cur_test_path, true_crop + '.jpg')
+            # randomly pick a true crop to compare the crops against
+            # true_crop = "%08d" % np.random.randint(1, int(file_list[-1].split("_")[0])) + "_true_crop"
+            true_crop = "%08d" % int(len(file_list)/77) + "_true_crop"
+            true_crop_path = os.path.join(cur_test_path, true_crop + '.jpg')
 
-        # randomly pick a whole image to slice and compare silces against true crop above
-        whole_image = "%08d" % np.random.randint(1, int(file_list[-1].split("_")[0]))
-        whole_image_path = os.path.join(cur_test_path, whole_image + '.jpg')
+            # randomly pick a whole image to slice and compare silces against true crop above
+            # whole_image = "%08d" % np.random.randint(1, int(file_list[-1].split("_")[0]))
+            whole_image = "%08d" % int(len(file_list) / 77)
+            whole_image_path = os.path.join(cur_test_path, whole_image + '.jpg')
 
-        # open true_crop as np array
-        TruthPic = np.float32(scipy.misc.imread(true_crop_path))
-        # find the h,w of true_crop
-        TruthSize = TruthPic.shape
+            # open true_crop as np array
+            TruthPic = np.float32(imageio.imread(true_crop_path))
+            # find the h,w of true_crop
+            TruthSize = TruthPic.shape
 
-        # load the full frame
-        BigPic = np.float32(scipy.misc.imread(whole_image_path))
-        # find the shape of the frame (used to determine the boarders of the crops)
-        BigSize = BigPic.shape
+            # load the full frame
+            BigPic = np.float32(imageio.imread(whole_image_path))
+            # find the shape of the frame (used to determine the boarders of the crops)
+            BigSize = BigPic.shape
 
-        # Resize the true_crop of the image so it fits the input-size of the net
-        if config.TEST.is_resize:
-            TruthPic = scipy.misc.imresize(TruthPic, size=config.TRAIN.resize, interp='bilinear', mode=None)
-        if config.TEST.is_fliplr:
-            TruthPic = np.fliplr(TruthPic)
+            # Resize the true_crop of the image so it fits the input-size of the net
+            if config.TEST.is_resize:
+                TruthPic = scipy.misc.imresize(TruthPic, size=config.TRAIN.resize, interp='bilinear', mode=None)
+            if config.TEST.is_fliplr:
+                TruthPic = np.fliplr(TruthPic)
 
-        # make size (1,width,height,rgb) to fit net input size
-        TruthPic = np.expand_dims(TruthPic, axis=0)
+            # make size (1,width,height,rgb) to fit net input size
+            TruthPic = np.expand_dims(TruthPic, axis=0)
 
-        # Matrix to hold losses of each relevant crop
-        heat_map_size = [BigSize[0] - TruthSize[0], BigSize[1] - TruthSize[1]]
-        # Since we want entire crop to be inside orig image, matrix is smaller
-        test_g_loss = np.zeros((len(range(0, heat_map_size[0], config.TEST.jump_size)),
-                                len(range(0, heat_map_size[1], config.TEST.jump_size))), dtype=float)
+            # Matrix to hold losses of each relevant crop
+            heat_map_size = [BigSize[0] - TruthSize[0], BigSize[1] - TruthSize[1]]
+            # Since we want entire crop to be inside orig image, matrix is smaller
+            test_g_loss = np.zeros((len(range(0, heat_map_size[0], config.TEST.jump_size)),
+                                    len(range(0, heat_map_size[1], config.TEST.jump_size))), dtype=float)
 
-        counter = 0
-        for row in range(0, heat_map_size[0], config.TEST.jump_size):
-            for col in range(0, heat_map_size[1], config.TEST.jump_size):
-                pct_finished = 100*(counter / (test_g_loss.shape[0]*test_g_loss.shape[1]))
-                print("Folder: ", cur_test_dir, " | ", "%.2f" % pct_finished)
-                CurCrop = BigPic[row:row + TruthSize[0], col:col + TruthSize[1]]
-                # print(CurCrop.shape)
-                if config.TEST.is_resize:
-                    CurCrop = scipy.misc.imresize(CurCrop, size=config.TRAIN.resize, interp='bilinear', mode=None)
-                if config.TEST.is_fliplr:
-                    CurCrop = np.fliplr(CurCrop)
+            counter = 0
+            for row in range(0, heat_map_size[0], config.TEST.jump_size):
+                for col in range(0, heat_map_size[1], config.TEST.jump_size):
+                    pct_finished = 100*(counter / (test_g_loss.shape[0]*test_g_loss.shape[1]))
+                    print("Folder: ", cur_test_dir, " | ", "%.2f" % pct_finished, "%")
+                    CurCrop = BigPic[row:row + TruthSize[0], col:col + TruthSize[1]]
+                    # print(CurCrop.shape)
+                    if config.TEST.is_resize:
+                        CurCrop = scipy.misc.imresize(CurCrop, size=config.TRAIN.resize, interp='bilinear', mode=None)
+                    if config.TEST.is_fliplr:
+                        CurCrop = np.fliplr(CurCrop)
 
-                # make size (1,width,height,rgb) to fit net input size
-                CurCrop = np.expand_dims(CurCrop, axis=0)
-                # We set overlap_input such that the loss for curCrop will be the actual loss
-                # and not distance from our expected loss, as it is while training.
-                output = sess.run(CX_content_loss, feed_dict={input_A: CurCrop, input_B: TruthPic, overlap_input: 1})
-                test_g_loss[int(row/config.TEST.jump_size)][int(col/config.TEST.jump_size)] = output
-                counter += 1
+                    # make size (1,width,height,rgb) to fit net input size
+                    CurCrop = np.expand_dims(CurCrop, axis=0)
+                    # We set overlap_input such that the loss for curCrop will be the actual loss
+                    # and not distance from our expected loss, as it is while training.
+                    output = sess.run(CX_content_loss, feed_dict={input_A: CurCrop, input_B: TruthPic, overlap_input: 1})
+                    test_g_loss[int(row/config.TEST.jump_size)][int(col/config.TEST.jump_size)] = output
+                    counter += 1
 
-        test_g_loss = scipy.misc.imresize(test_g_loss, size=tuple(heat_map_size), interp='bicubic', mode=None)
-        test_g_loss=helper.CutoffHeatmap(test_g_loss, 3)
-        test_g_loss=helper.inflate_heatmap_to_BigPicSize(test_g_loss,TruthSize)
-        plt.imsave(os.path.join(test_dir_path, cur_test_dir + '_' + true_crop +
-                                '_whole_pic_' + whole_image + '_heat_map.jpg'), test_g_loss, cmap='plasma')
-        #helper.save_heat_map(test_g_loss, test_parent_list, cur_test_dir, whole_image, true_crop, tuple(heat_map_size), True)
+            test_g_loss = scipy.misc.imresize(test_g_loss, size=tuple(heat_map_size), interp='bicubic', mode=None)
+            # test_g_loss = helper.CutoffHeatmap(test_g_loss, 3)
+            test_g_loss = helper.inflate_heatmap_to_BigPicSize(test_g_loss,TruthSize)
+            if model > 0:
+                plt.imsave(os.path.join(config.base_dir, "model_" + str(model) + '_' + cur_test_dir + '_' + true_crop +
+                                        '_whole_pic_' + whole_image + '_heat_map.jpg'), test_g_loss, cmap='plasma')
+            else:
+                plt.imsave(os.path.join(config.base_dir, 'VGG' + '_' + cur_test_dir + '_' + true_crop +
+                                        '_whole_pic_' + whole_image + '_heat_map.jpg'), test_g_loss, cmap='plasma')
+            # helper.save_heat_map(test_g_loss, test_parent_list, cur_test_dir, whole_image, true_crop, tuple(heat_map_size), True)

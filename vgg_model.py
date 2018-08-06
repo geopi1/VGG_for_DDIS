@@ -38,7 +38,7 @@ def get_weight_bias(vgg_layers, i):
 
 # -----------------------------------------
 #
-# Build VGG to extract features - Used in single_image_animation
+# Build VGG to extract features
 #
 # -----------------------------------------
 def build_vgg19(input, reuse=False):

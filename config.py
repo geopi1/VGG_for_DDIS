@@ -37,10 +37,12 @@ config.TRAIN.crop_size = [config.TRAIN.sp * config.TRAIN.aspect_ratio, config.TR
 config.TRAIN.A_data_dir = 'Train'
 config.TRAIN.out_dir = 'Result'
 config.TRAIN.num_epochs = 10
-config.TRAIN.save_every_nth_epoch = 2
+config.TRAIN.save_every_nth_epoch = 1
 config.TRAIN.reduce_dim = 2  # use of smaller CRN model
 config.TRAIN.every_nth_frame = 40  # train using all frames
 config.TRAIN.epsilon = 1e-10
+
+config.TRAIN.models = os.path.join(config.base_dir, config.TRAIN.out_dir, '0010')
 
 config.VAL = edict()
 config.VAL.A_data_dir = 'Validate'
@@ -51,7 +53,7 @@ config.TEST.is_test = not config.TRAIN.is_train # test only when not training
 config.TEST.A_data_dir = "Test"
 config.TEST.is_resize = True
 config.TEST.is_fliplr = False
-config.TEST.jump_size = 100
+config.TEST.jump_size = 10
 # REMOVE
 # config.TEST.every_nth_frame = 5
 #config.TEST.out_dir_postfix = "Test"
