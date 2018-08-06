@@ -1,9 +1,7 @@
-import os
-import fnmatch
-import PIL
 from PIL import Image
 from PIL import ImageDraw
 import numpy as np
+
 
 def find_intersection(rect, rect_height, rect_width, poly_coor, poly_height, poly_width):
     # Image.new gets (width,height) tuple
@@ -16,6 +14,7 @@ def find_intersection(rect, rect_height, rect_width, poly_coor, poly_height, pol
     img2.save("C:\\Users\\eyal\\Downloads\\img2.jpg")
     area = np.count_nonzero(np.logical_and(np.array(img1), np.array(img2)))
     return area
+
 
 poly = [0, 0, 15, 0, 15, 15, 0, 21]
 poly2 = [4, 0, 13, 0, 12, 15, 0, 21]

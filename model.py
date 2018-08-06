@@ -1,8 +1,6 @@
 # ---------------------------------------------------
 #   code credits: https://github.com/CQFIO/PhotographicImageSynthesis
 # ---------------------------------------------------
-
-import tensorflow.contrib.slim as slim
 from vgg_model import *
 from config import *
 

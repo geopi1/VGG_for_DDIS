@@ -1,9 +1,6 @@
 # ---------------------------------------------------
 #   code credits: https://github.com/CQFIO/PhotographicImageSynthesis
 # ---------------------------------------------------
-
-import tensorflow as tf
-import tensorflow.contrib.slim as slim
 import numpy as np
 import scipy.io
 from config import *
@@ -11,30 +8,32 @@ from config import *
 
 def lrelu(x):
     return tf.maximum(0.2 * x, x)
+
+
 # -----------------------------------------
 #
 # define the behavior of layers, conv - defines convolution layer. pool - pooling layer
 #
 # -----------------------------------------
-
 def build_net(ntype, nin, nwb=None, name=None):
     if ntype == 'conv':
         return tf.nn.relu(tf.nn.conv2d(nin, nwb[0], strides=[1, 1, 1, 1], padding='SAME', name=name) + nwb[1])
     elif ntype == 'pool':
         return tf.nn.avg_pool(nin, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
 
+
 # -----------------------------------------
 #
 # function to extract the weights of layers
 #
 # -----------------------------------------
-
 def get_weight_bias(vgg_layers, i):
     weights = vgg_layers[i][0][0][2][0][0]
     weights = tf.Variable(weights)
     bias = vgg_layers[i][0][0][2][0][1]
-    bias = tf.Variable(np.reshape(bias, (bias.size)))
+    bias = tf.Variable(np.reshape(bias, bias.size))
     return weights, bias
+
 
 # -----------------------------------------
 #

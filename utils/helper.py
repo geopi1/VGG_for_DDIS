@@ -24,7 +24,7 @@ def save_image(output, file_name):
     return
 
 
-def save_heat_map(data, path, cur_dir_name, whole_image_name, true_crop_name, resize_dims,resize=False):
+def save_heat_map(data, path, cur_dir_name, whole_image_name, true_crop_name, resize_dims, resize=False):
     # Optional resize for small images
     if resize:
         data = scipy.misc.imresize(data, size=resize_dims, interp='bicubic', mode=None)
@@ -34,13 +34,13 @@ def save_heat_map(data, path, cur_dir_name, whole_image_name, true_crop_name, re
                             '_whole_pic_' + whole_image_name + '_heat_map.jpg'), data, cmap='plasma')
 
 
-def write_loss_in_txt(targetdir,loss_dict, epoch):
-    target = open(os.path.join(targetdir,"epoch_%04d_score.txt" % epoch),'w')
-    losses_list=[]
+def write_loss_in_txt(targetdir, loss_dict, epoch):
+    target = open(os.path.join(targetdir, "epoch_%04d_score.txt" % epoch), 'w')
+    losses_list = []
     for key, value in loss_dict.items():
-        target.write("%s: loss=%f\n" % (key,value))
+        target.write("%s: loss=%f\n" % (key, value))
         losses_list.append(value)
-    target.write("\n%s: total average loss=%f" % np.mean(losses_list))
+    target.write("\nTotal average loss=%f" % np.mean(losses_list))
     target.close()
 
 
@@ -90,13 +90,16 @@ def build_dict():
 
     return val_file_list, val_true_crop, data_dict, true_crop_dict, total_len
 
+
 def inflate_heatmap_to_BigPicSize(OrigHeatmap,CropSize):
-    #Create new inflated heatmaps with zeros and insert OrigHeatmap at top left. Moves pixel values to middle of crop
-    #OrigHeatmap is an np.array
-    #CropSize is a tuple
+    # ----------------------------------------------------------------------------
+    # Create new inflated heatmaps with zeros and insert OrigHeatmap at top left.
+    # Moves pixel values to middle of crop
+    # OrigHeatmap is an np.array
+    # CropSize is a tuple
+    # ----------------------------------------------------------------------------
 
-
-    #inflate
+    # inflate
     InflatedHeatmap = np.zeros((OrigHeatmap.shape[0]+CropSize[0],OrigHeatmap.shape[1]+CropSize[1]), dtype=float)
     for row in range(OrigHeatmap.shape[0]):
         for col in range(OrigHeatmap.shape[1]):
@@ -105,16 +108,18 @@ def inflate_heatmap_to_BigPicSize(OrigHeatmap,CropSize):
 
 
 def CutoffHeatmap(Heatmap,CutoffStdNum=3):
-    #Calculate cutoff for heatmap on mean+std*CutoffStdNum
-    #Make heatmap "binary" - 255 for above cutoff, 0 if below
+    # ---------------------------------------------------------
+    # Calculate cutoff for heatmap on mean+std*CutoffStdNum
+    # Make heatmap "binary" - 255 for above cutoff, 0 if below
+    # ---------------------------------------------------------
 
-    Cutoff=np.mean(Heatmap)+CutoffStdNum*np.std(Heatmap)
-    Cutoff=np.max(Heatmap)*0.1+np.min(Heatmap)*0.9
+    Cutoff = np.mean(Heatmap)+CutoffStdNum*np.std(Heatmap)
+    Cutoff = np.max(Heatmap)*0.1+np.min(Heatmap)*0.9
     for row in range(Heatmap.shape[0]):
         for col in range(Heatmap.shape[1]):
-            if Heatmap[row,col]>=Cutoff:
-                Heatmap[row, col]=0 #Too high loss - want it dark
+            if Heatmap[row, col] >= Cutoff:
+                Heatmap[row, col] = 0  # Too high loss - want it dark
             else:
-                Heatmap[row, col] = 255 #Low loss - bright
+                Heatmap[row, col] = 255  # Low loss - bright
     return Heatmap
 

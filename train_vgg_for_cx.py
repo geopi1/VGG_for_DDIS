@@ -2,18 +2,14 @@
 #   code credits: https://github.com/CQFIO/PhotographicImageSynthesis
 # ---------------------------------------------------
 from __future__ import division
-
 import time
-
 import utils.helper as helper
 from CX.CX_helper import *
 from model import *
 from utils.FetchManager import *
-import scipy
 import imageio
 import scipy.misc
 import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
 
 
 sess = tf.Session()
@@ -30,7 +26,8 @@ with tf.variable_scope(tf.get_variable_scope()):
     in_B = tf.placeholder(tf.float32, [1, None, None, 3])
     input_A = tf.image.resize_bilinear(in_A, (config.TRAIN.sp, config.TRAIN.sp))
     input_B = tf.image.resize_bilinear(in_B, (config.TRAIN.sp, config.TRAIN.sp))
-    # Amount of overlap between the image_B and the true box marked by hand
+
+    # Amount of overlap between the image_B and the ground_truth given in VOT
     overlap_input = tf.placeholder(tf.float32)
 
     # Weights of VGG - stored in the folder as .mat/.npy
@@ -42,7 +39,7 @@ with tf.variable_scope(tf.get_variable_scope()):
         vgg_B = build_vgg19(input_B)
         vgg_A = build_vgg19(input_A, reuse=True)
 
-    # It resize features but why and why resize as a tf object?
+    # Resize feature tensor
     def resize_and_concat_features(feat, layers):
         list = []
         sp = feat[layers[0]].shape
@@ -80,17 +77,17 @@ saver = tf.train.Saver(max_to_keep=1000)
 sess.run(tf.global_variables_initializer())
 
 
-# load from checkpoint if exist
-# What does this mean? It allows the process to stop and resume? why load ckpt?
-# Or is it a way to save the final process
+# ----------------------------------------------------------
+#               LOAD FUNCTION
+# Load TF checkpoint from given path
+# If not found continue with original VGG weights
+# ----------------------------------------------------------
 def load(dir):
     ckpt = tf.train.get_checkpoint_state(dir)
     if ckpt:  # makes sure model exists in dir
         print('loaded ' + ckpt.model_checkpoint_path)
         saver.restore(sess, ckpt.model_checkpoint_path)
     return ckpt
-
-
 
 
 # ---------------------------------------------------
@@ -120,11 +117,11 @@ if config.TRAIN.is_train:
             continue
         cnt = 0
 
-        Epoch_g_loss={}
+        Epoch_g_loss = {}
 
         # ------------ batch loop -------------------------
         for dirIndex in np.random.permutation(len(dir_list)):
-            cur_dir=dir_list[dirIndex]
+            cur_dir = dir_list[dirIndex]
 
             cur_train_dir = os.path.join(config.base_dir, config.TRAIN.A_data_dir, cur_dir)
 
@@ -144,7 +141,6 @@ if config.TRAIN.is_train:
             assert len(file_list) > 0
 
             train_file_list = file_list[0::config.TRAIN.every_nth_frame]
-
 
             for ind in np.random.permutation(len(train_file_list)):
                 st = time.time()
@@ -167,37 +163,38 @@ if config.TRAIN.is_train:
                 eval = fetcher.fetch(feed_dict, [CX_content_loss])
                 if cnt % 100 == 0:
                     g_loss[ind] = eval[G_loss]
-                    log = "epoch:%d | cnt:%d | time:%.2f | loss:%.2f ||  cur_dir: %s " % (epoch, cnt, (time.time() - st), np.mean(g_loss[np.where(g_loss)]),  cur_dir)
+                    log = "epoch:%d | cnt:%d | time:%.2f | loss:%.2f ||  cur_dir: %s "\
+                          % (epoch, cnt, (time.time() - st), float(np.mean(g_loss[np.where(g_loss)])),  cur_dir)
                     print(log)
 
             # ------------ end batch loop -------------------
             # Append curDirloss to total Epoch_loss of current epoch
-            Epoch_g_loss[cur_dir]=np.mean(g_loss[np.where(g_loss)])
+            Epoch_g_loss[cur_dir] = np.mean(g_loss[np.where(g_loss)])
 
         # -------------- save the model ------------------
         # save only every nth epoch (save space)
-        if epoch % config.TRAIN.save_every_nth_epoch ==0 :
+        if (epoch % config.TRAIN.save_every_nth_epoch) == 0:
             # we use loop with try and catch to verify that the save was done.
             # when saving on Dropbox it sometimes cause an error.
             for i in range(5):
                 try:
-                    TrainLogFolder=os.path.join(result_dir, "TrainLogs")
+                    TrainLogFolder = os.path.join(result_dir, "TrainLogs")
                     if not os.path.exists(epoch_dir):
                         os.makedirs(epoch_dir)
                     if not os.path.exists(TrainLogFolder):
                         os.makedirs(TrainLogFolder)
                     # save the mean of the epochs train loss
-                    helper.write_loss_in_txt(TrainLogFolder,Epoch_g_loss, epoch)
-                    if epoch % config.TRAIN.save_every_nth_epoch==0:
-                        saver.save(sess, os.path.join(epoch_dir,"model.ckpt"))
+                    helper.write_loss_in_txt(TrainLogFolder, Epoch_g_loss, epoch)
+                    if (epoch % config.TRAIN.save_every_nth_epoch) == 0:
+                        saver.save(sess, os.path.join(epoch_dir, "model.ckpt"))
                 except:
                     time.sleep(1)
 
         # ------------ validation loop -------------------------
         Val_losses_dict = {}
         for ValDirIndex in np.random.permutation(len(val_dir_list)):
-            cur_val_dir = val_dir_list[ValDirIndex] # folder name
-            cur_val_dir_path = os.path.join(val_parent_list, cur_val_dir) # total path to folder
+            cur_val_dir = val_dir_list[ValDirIndex]  # folder name
+            cur_val_dir_path = os.path.join(val_parent_list, cur_val_dir)  # total path to folder
 
             v_file_list = [str(j).split(".")[0] for j in os.listdir(cur_val_dir_path) if (j.endswith(".jpg") and (len(j.split("_")) > 3))]
 
@@ -205,12 +202,12 @@ if config.TRAIN.is_train:
 
             curDEBUG = val_file_list[-1]
             val_g_loss = np.zeros(len(val_file_list), dtype=float)
-            val_log_counter=0
-            for ind in range(1,len(val_file_list)):
+            val_log_counter = 0
+            for ind in range(1, len(val_file_list)):
 
                 true_crop = "%08d" % np.random.randint(1, int(val_file_list[-1].split("_")[0])) + "_true_crop"
-                A_file_name = os.path.join(cur_val_dir_path ,val_file_list[ind]+'.jpg')
-                B_file_name = os.path.join(cur_val_dir_path ,true_crop+'.jpg')
+                A_file_name = os.path.join(cur_val_dir_path, val_file_list[ind]+'.jpg')
+                B_file_name = os.path.join(cur_val_dir_path, true_crop+'.jpg')
 
                 if not os.path.isfile(A_file_name):  # test label
                     continue
@@ -219,12 +216,12 @@ if config.TRAIN.is_train:
                 overlap_val = float(val_file_list[ind].split("_")[-1])/100
                 output = sess.run(CX_content_loss, feed_dict={input_A: A_image_val, input_B: B_image_val, overlap_input: overlap_val})  # overlap_val....
                 val_g_loss[ind] = output
-                if (val_log_counter % 100 == 0):
-                    log = "VAL | folder: %s | epoch:%d | loss:%.2f" % (cur_val_dir, epoch,  np.mean(val_g_loss[np.where(val_g_loss)]))
-                    val_log_counter+=1
+                if (val_log_counter % 100) == 0:
+                    log = "VAL | folder: %s | epoch:%d | loss:%.2f" % (cur_val_dir, epoch,  float(np.mean(val_g_loss[np.where(val_g_loss)])))
+                    val_log_counter += 1
                     print(log)
             # Finished current validation folder - add to log
-            Val_losses_dict[cur_val_dir]=np.mean(val_g_loss[np.where(val_g_loss)])
+            Val_losses_dict[cur_val_dir] = np.mean(val_g_loss[np.where(val_g_loss)])
         # finished all validation folders - create log file
         for i in range(5):
             try:
@@ -315,11 +312,10 @@ if config.TEST.is_test:
 
             test_g_loss = scipy.misc.imresize(test_g_loss, size=tuple(heat_map_size), interp='bicubic', mode=None)
             # test_g_loss = helper.CutoffHeatmap(test_g_loss, 3)
-            test_g_loss = helper.inflate_heatmap_to_BigPicSize(test_g_loss,TruthSize)
+            test_g_loss = helper.inflate_heatmap_to_BigPicSize(test_g_loss, TruthSize)
             if model > 0:
                 plt.imsave(os.path.join(config.base_dir, "model_" + str(model) + '_' + cur_test_dir + '_' + true_crop +
                                         '_whole_pic_' + whole_image + '_heat_map.jpg'), test_g_loss, cmap='plasma')
             else:
                 plt.imsave(os.path.join(config.base_dir, 'VGG' + '_' + cur_test_dir + '_' + true_crop +
                                         '_whole_pic_' + whole_image + '_heat_map.jpg'), test_g_loss, cmap='plasma')
-            # helper.save_heat_map(test_g_loss, test_parent_list, cur_test_dir, whole_image, true_crop, tuple(heat_map_size), True)

@@ -47,6 +47,7 @@ def crop_quarters(feature_tensor):
     feature_tensor = tf.concat(quarters_list, axis=0)
     return feature_tensor
 
+
 # A function that returns the Contextual Loss
 # Implemented in CXFlow.py - no need to touch
 def CX_loss_helper(vgg_A, vgg_B, CX_config):
