@@ -193,6 +193,6 @@ def CX_loss(T_features, I_features, distance=Distance.L2, nnsigma=float(1.0)):
         k_max_NC = tf.reduce_max(cs, axis=height_width_axis)
         CS = tf.reduce_mean(k_max_NC, axis=[1])
         CX_as_loss = 1 - CS
-        CX_loss = -tf.log(1 - CX_as_loss)
+        CX_loss = -tf.log(1 - CX_as_loss + 1e-100)
         CX_loss = tf.reduce_mean(CX_loss)
         return CX_loss

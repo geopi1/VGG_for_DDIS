@@ -64,8 +64,8 @@ with tf.variable_scope(tf.get_variable_scope()):
     # --- total loss ---
     # TEMP LOSS DEFINITION CHANGE WHEN WE DECIDE WHAT WORKS BEST
     # overlap_input is [1,0], -log to bring to [0,infty], to match DDIS, 0->Identical,infty->Different
-    G_loss = tf.reduce_mean(tf.abs(CX_content_loss - (-tf.log(overlap_input + config.TRAIN.epsilon))))
-
+    # G_loss = tf.reduce_mean((CX_content_loss + tf.log(overlap_input + config.TRAIN.epsilon)) ** 2)
+    G_loss = tf.reduce_mean(tf.abs(0.1 * CX_content_loss + tf.log(overlap_input + config.TRAIN.epsilon)))
 
 # create the optimization
 # Define all the hyper-params and optimizer
@@ -97,7 +97,7 @@ if config.TRAIN.is_train:
 
     dir_list = os.listdir(os.path.join(config.base_dir, config.TRAIN.A_data_dir))
     val_parent_list = os.path.join(config.base_dir, config.VAL.A_data_dir)
-    val_dir_list=os.listdir(val_parent_list)
+    val_dir_list = os.listdir(val_parent_list)
     result_dir = os.path.join(config.base_dir, config.TRAIN.out_dir)
 
     # instantiate a FetchManager class
@@ -157,10 +157,10 @@ if config.TRAIN.is_train:
                 A_image = helper.read_image(A_file_name)  # training image A
                 B_image = helper.read_image(B_file_name)  # training image B
 
-                feed_dict = {input_A: A_image, input_B: B_image, overlap_input: overlap, lr: 1e-4}
+                feed_dict = {input_A: A_image, input_B: B_image, overlap_input: overlap, lr: 1e-8}
 
                 # session run
-                eval = fetcher.fetch(feed_dict, [CX_content_loss])
+                eval = fetcher.fetch(feed_dict, [G_loss])
                 if cnt % 100 == 0:
                     g_loss[ind] = eval[G_loss]
                     log = "epoch:%d | cnt:%d | time:%.2f | loss:%.2f ||  cur_dir: %s "\
@@ -173,22 +173,21 @@ if config.TRAIN.is_train:
 
         # -------------- save the model ------------------
         # save only every nth epoch (save space)
-        if (epoch % config.TRAIN.save_every_nth_epoch) == 0:
-            # we use loop with try and catch to verify that the save was done.
-            # when saving on Dropbox it sometimes cause an error.
-            for i in range(5):
-                try:
-                    TrainLogFolder = os.path.join(result_dir, "TrainLogs")
-                    if not os.path.exists(epoch_dir):
-                        os.makedirs(epoch_dir)
-                    if not os.path.exists(TrainLogFolder):
-                        os.makedirs(TrainLogFolder)
-                    # save the mean of the epochs train loss
-                    helper.write_loss_in_txt(TrainLogFolder, Epoch_g_loss, epoch)
-                    if (epoch % config.TRAIN.save_every_nth_epoch) == 0:
-                        saver.save(sess, os.path.join(epoch_dir, "model.ckpt"))
-                except:
-                    time.sleep(1)
+        # we use loop with try and catch to verify that the save was done.
+        # when saving on Dropbox it sometimes cause an error.
+        for i in range(5):
+            try:
+                TrainLogFolder = os.path.join(result_dir, "TrainLogs")
+                if not os.path.exists(epoch_dir):
+                    os.makedirs(epoch_dir)
+                if not os.path.exists(TrainLogFolder):
+                    os.makedirs(TrainLogFolder)
+                # save the mean of the epochs train loss
+                helper.write_loss_in_txt(TrainLogFolder, Epoch_g_loss, epoch)
+                if (epoch % config.TRAIN.save_every_nth_epoch) == 0:
+                    saver.save(sess, os.path.join(epoch_dir, "model.ckpt"))
+            except:
+                time.sleep(1)
 
         # ------------ validation loop -------------------------
         Val_losses_dict = {}
@@ -206,15 +205,15 @@ if config.TRAIN.is_train:
             for ind in range(1, len(val_file_list)):
 
                 true_crop = "%08d" % np.random.randint(1, int(val_file_list[-1].split("_")[0])) + "_true_crop"
-                A_file_name = os.path.join(cur_val_dir_path, val_file_list[ind]+'.jpg')
-                B_file_name = os.path.join(cur_val_dir_path, true_crop+'.jpg')
+                A_file_name = os.path.join(cur_val_dir_path, val_file_list[ind] + '.jpg')
+                B_file_name = os.path.join(cur_val_dir_path, true_crop + '.jpg')
 
                 if not os.path.isfile(A_file_name):  # test label
                     continue
                 A_image_val = helper.read_image(A_file_name)  # training image A
                 B_image_val = helper.read_image(B_file_name)  # training image A
                 overlap_val = float(val_file_list[ind].split("_")[-1])/100
-                output = sess.run(CX_content_loss, feed_dict={input_A: A_image_val, input_B: B_image_val, overlap_input: overlap_val})  # overlap_val....
+                output = sess.run(G_loss, feed_dict={input_A: A_image_val, input_B: B_image_val, overlap_input: overlap_val})  # overlap_val....
                 val_g_loss[ind] = output
                 if (val_log_counter % 100) == 0:
                     log = "VAL | folder: %s | epoch:%d | loss:%.2f" % (cur_val_dir, epoch,  float(np.mean(val_g_loss[np.where(val_g_loss)])))
