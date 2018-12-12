@@ -14,7 +14,7 @@ config = edict()
 
 # ---------------------------------------------
 #               update paths
-config.base_dir = os.path.join('C:\\', 'Users', 'eyal', 'Desktop', 'projectA', 'vot_full')
+config.base_dir = os.path.join()  # ENTER BASE DIR!
 config.vgg_model_path = os.path.join(config.base_dir, 'VGG_TRAIN', 'imagenet-vgg-verydeep-19.mat')
 # ---------------------------------------------
 

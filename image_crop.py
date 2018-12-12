@@ -114,7 +114,7 @@ def make_crops(d_path, cur_dir, num_crops):
 
 # Define the base folder
 # project_dir = config.base_dir
-project_dir = r'C:\Users\eyal\Desktop\Project_A_new_data\vot_full'
+project_dir = r''  # ENTER YOUR BASE DIR PATH
 num_crops = 10  # Arbitrarily set to 10
 
 # get the names of all the folder to iterate over

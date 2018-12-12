@@ -3,6 +3,7 @@ from PIL import ImageDraw
 import numpy as np
 
 
+# TESTS FOR THE OVERLAP FUNCTION
 def find_intersection(rect, rect_height, rect_width, poly_coor, poly_height, poly_width):
     # Image.new gets (width,height) tuple
     img1 = Image.new('1', (poly_width, poly_height))

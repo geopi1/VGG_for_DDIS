@@ -5,7 +5,7 @@ from vgg_model import *
 from config import *
 
 
-# this function have been modify such that the images are portrait and not landscape
+# this function has been modified such that the images are portrait and not landscape
 def recursive_generator(input_image, width):
     ar = config.TRAIN.aspect_ratio
     if width >= 128:
