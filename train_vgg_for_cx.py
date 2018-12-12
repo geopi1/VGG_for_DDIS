@@ -65,7 +65,9 @@ with tf.variable_scope(tf.get_variable_scope()):
     # TEMP LOSS DEFINITION CHANGE WHEN WE DECIDE WHAT WORKS BEST
     # overlap_input is [1,0], -log to bring to [0,infty], to match DDIS, 0->Identical,infty->Different
     # G_loss = tf.reduce_mean((CX_content_loss + tf.log(overlap_input + config.TRAIN.epsilon)) ** 2)
-    G_loss = tf.reduce_mean(tf.abs(0.1 * CX_content_loss + tf.log(overlap_input + config.TRAIN.epsilon)))
+    # G_loss = CX_content_loss
+    tan_overlap = ((np.pi/2)+tf.atan(100*(overlap_input-1/2)))/np.pi
+    G_loss = tf.reduce_mean(-(overlap_input)*tf.log(tf.clip_by_value(CX_content_loss, 1e-15, 1.0)) - (1-overlap_input)*tf.log(1-tf.clip_by_value(CX_content_loss, 1e-15, 1.0)))
 
 # create the optimization
 # Define all the hyper-params and optimizer
@@ -132,6 +134,7 @@ if config.TRAIN.is_train:
             file_list = [str(j).split(".")[0] for j in os.listdir(cur_train_dir) if (j.endswith(".jpg") and (len(j.split("_")) > 3))]
 
             g_loss = np.zeros(len(file_list), dtype=float)
+            cx_loss = np.zeros(len(file_list), dtype=float)
 
             # pick a random reference true_crop that will be matched against the others
             true_crop = "%08d" % np.random.randint(int(file_list[-1].split("_")[0])) + "_true_crop"
@@ -161,10 +164,12 @@ if config.TRAIN.is_train:
 
                 # session run
                 eval = fetcher.fetch(feed_dict, [G_loss])
+                # evalCX = fetcher.fetch(feed_dict, [CX_content_loss])
                 if cnt % 100 == 0:
                     g_loss[ind] = eval[G_loss]
-                    log = "epoch:%d | cnt:%d | time:%.2f | loss:%.2f ||  cur_dir: %s "\
-                          % (epoch, cnt, (time.time() - st), float(np.mean(g_loss[np.where(g_loss)])),  cur_dir)
+                    # cx_loss[ind] = evalCX[CX_content_loss]
+                    log = "epoch:%d | cnt:%d | time:%.2f | loss:%.2f ||  cur_dir: %s"\
+                          % (epoch, cnt, (time.time() - st), float(np.mean(g_loss[np.where(g_loss)])), cur_dir)
                     print(log)
 
             # ------------ end batch loop -------------------
@@ -255,13 +260,15 @@ if config.TEST.is_test:
             file_list = [str(j).split(".")[0] for j in os.listdir(cur_test_path) if (j.endswith(".jpg") and (len(j.split("_")) > 3))]
 
             # randomly pick a true crop to compare the crops against
-            # true_crop = "%08d" % np.random.randint(1, int(file_list[-1].split("_")[0])) + "_true_crop"
+            #true_crop = "%08d" % np.random.randint(1, int(file_list[-1].split("_")[0])) + "_true_crop"
             true_crop = "%08d" % int(len(file_list)/77) + "_true_crop"
+            #true_crop = "%08d" % int(94) + "_true_crop" #291018
             true_crop_path = os.path.join(cur_test_path, true_crop + '.jpg')
 
             # randomly pick a whole image to slice and compare silces against true crop above
-            # whole_image = "%08d" % np.random.randint(1, int(file_list[-1].split("_")[0]))
+            whole_image = "%08d" % np.random.randint(1, int(file_list[-1].split("_")[0]))
             whole_image = "%08d" % int(len(file_list) / 77)
+            #whole_image = "%08d" % int(94) #291018
             whole_image_path = os.path.join(cur_test_path, whole_image + '.jpg')
 
             # open true_crop as np array

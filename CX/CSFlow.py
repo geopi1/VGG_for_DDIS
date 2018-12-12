@@ -120,7 +120,7 @@ class CSFlow:
     @staticmethod
     def sum_normalize(cs, axis=TensorAxis.C):
         reduce_sum = tf.reduce_sum(cs, axis, keep_dims=True, name='sum')
-        return tf.divide(cs, reduce_sum, name='sumNormalized')
+        return tf.divide(cs, reduce_sum + 1e-5, name='sumNormalized')
 
     def center_by_T(self, T_features, I_features):
         # assuming both input are of the same size
@@ -150,7 +150,7 @@ class CSFlow:
         norms = tf.norm(features, ord='euclidean', axis=TensorAxis.C, name='norm')
         # expanding the norms tensor to support broadcast division
         norms_expanded = tf.expand_dims(norms, TensorAxis.C)
-        features = tf.divide(features, norms_expanded, name='normalized')
+        features = tf.divide(features, norms_expanded + 1e-5, name='normalized')
         return features
 
     def patch_decomposition(self, T_features):
@@ -193,6 +193,7 @@ def CX_loss(T_features, I_features, distance=Distance.L2, nnsigma=float(1.0)):
         k_max_NC = tf.reduce_max(cs, axis=height_width_axis)
         CS = tf.reduce_mean(k_max_NC, axis=[1])
         CX_as_loss = 1 - CS
-        CX_loss = -tf.log(1 - CX_as_loss + 1e-100)
+        # CX_loss = -tf.log(1 - CX_as_loss + 1e-100)
+        CX_loss = 1 - CX_as_loss #291018 - changed loss of CX
         CX_loss = tf.reduce_mean(CX_loss)
         return CX_loss

@@ -26,24 +26,24 @@ config.W.CX_content = 1.0
 
 # train parameters
 config.TRAIN = edict()
-config.TRAIN.is_train = True  # change to True of you want to train
+config.TRAIN.is_train = False  # change to True if you want to train
 config.TRAIN.sp = 256
 config.TRAIN.aspect_ratio = 1  # 1
 config.TRAIN.resize = [config.TRAIN.sp * config.TRAIN.aspect_ratio, config.TRAIN.sp]
 config.TRAIN.crop_size = [config.TRAIN.sp * config.TRAIN.aspect_ratio, config.TRAIN.sp]
 config.TRAIN.A_data_dir = 'Train'
 config.TRAIN.out_dir = 'Result'
-config.TRAIN.num_epochs = 10
-config.TRAIN.save_every_nth_epoch = 2
+config.TRAIN.num_epochs = 1000
+config.TRAIN.save_every_nth_epoch = 100
 config.TRAIN.reduce_dim = 2  # use of smaller CRN model
-config.TRAIN.every_nth_frame = 40  # train using all frames
-config.TRAIN.epsilon = 1e-100
+config.TRAIN.every_nth_frame = 100  # train using all frames
+config.TRAIN.epsilon = 1e-10
 
 config.TRAIN.models = os.path.join(config.base_dir, config.TRAIN.out_dir, '0010')
 
 config.VAL = edict()
 config.VAL.A_data_dir = 'Validate'
-config.VAL.every_nth_frame = 40
+config.VAL.every_nth_frame = 100
 
 config.TEST = edict()
 config.TEST.is_test = not config.TRAIN.is_train  # test only when not training
@@ -56,9 +56,10 @@ config.TEST.random_crop = False  # if False, take the top left corner
 config.CX = edict()
 config.CX.crop_quarters = False
 config.CX.max_sampling_1d_size = 65
-# config.dis.feat_layers = {'conv1_1': 1.0,'conv2_1': 1.0, 'conv3_1': 1.0, 'conv4_1': 1.0,'conv5_1': 1.0}
-config.CX.feat_layers = {'conv3_2': 1.0, 'conv4_2': 1.0}
-config.CX.feat_content_layers = {'conv4_2': 1.0}  # for single image
+config.CX.feat_layers = {'conv1_1': 1.0,'conv2_1': 1.0, 'conv3_1': 1.0}
+#config.CX.feat_layers = {'conv1_1': 1.0,'conv2_1': 1.0, 'conv3_1': 1.0, 'conv4_1': 1.0,'conv5_1': 1.0}
+#config.CX.feat_layers = {'conv2_2': 1.0, 'conv3_3': 1.0}
+config.CX.feat_content_layers = {'conv3_1': 1.0}  # for single image
 config.CX.Dist = Distance.DotProduct
 config.CX.nn_stretch_sigma = 0.5  # 0.1
 config.CX.patch_size = 5

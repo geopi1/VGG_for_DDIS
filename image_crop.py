@@ -81,23 +81,26 @@ def make_crops(d_path, cur_dir, num_crops):
         true_crop = cur_im.crop((lft, up, right, down))
         true_crop.save(os.path.join(d_path, cur_dir, pic_list[i] + "_true_crop.jpg"))
         for j in range(num_crops):
-            new_lft = int(lft) + round((width / 2.5) * np.random.normal(0, 1))
-            new_up = int(up) + round((height / 2.5) * np.random.normal(0, 1))
+            new_lft = int(lft) + round((width / 2.5) * np.random.normal(0, 3))
+            new_up = int(up) + round((height / 2.5) * np.random.normal(0, 3))
             # find the intersection between our rect and the orig poly of the bounding box
             # find the overlap percentage
             rect = [new_lft, new_up, new_lft+width, new_up, new_lft+width, new_up+height, new_lft, new_up+height]
             overlap = 100 * find_intersection(rect, b_box_loc[i], im_height, im_width) / \
                       polygonArea(b_box_loc[i], im_height, im_width)
 
-            a = ((new_lft < 0) | (new_lft + width > im_width) | (new_up < 0) | (new_up + height > im_height) | (overlap < 0))
+            a = ((new_lft < 0) | (new_lft + width > im_width) | (new_up < 0) | (new_up + height > im_height))
             cnt = 0
             while a:
                 cnt += 1
-                new_lft = int(lft) + round((width / 2.5) * np.random.normal(0, 1))
-                new_up = int(up) + round((height / 2.5) * np.random.normal(0, 1))
-                overlap = 100 * (width - abs(new_lft - int(lft))) * (height - (abs(up - new_up))) / (height * width)
-                a = ((new_lft < 0) | (new_lft + width > im_width) | (new_up < 0) | (new_up + height > im_height) | (overlap < 0))
-                if cnt > 10**5:
+                new_lft = int(lft) + round((width / 2.5) * np.random.normal(0, 3))
+                new_up = int(up) + round((height / 2.5) * np.random.normal(0, 3))
+                rect = [new_lft, new_up, new_lft + width, new_up, new_lft + width, new_up + height, new_lft,
+                        new_up + height]
+                overlap = 100 * find_intersection(rect, b_box_loc[i], im_height, im_width) / \
+                          polygonArea(b_box_loc[i], im_height, im_width)
+                a = ((new_lft < 0) | (new_lft + width > im_width) | (new_up < 0) | (new_up + height > im_height))
+                if cnt > 10**2:
                     break
 
             cur_crop = cur_im.crop((new_lft, new_up, new_lft + width, new_up + height))
@@ -110,7 +113,8 @@ def make_crops(d_path, cur_dir, num_crops):
 
 
 # Define the base folder
-project_dir = config.base_dir
+# project_dir = config.base_dir
+project_dir = r'C:\Users\eyal\Desktop\Project_A_new_data\vot_full'
 num_crops = 10  # Arbitrarily set to 10
 
 # get the names of all the folder to iterate over
@@ -119,6 +123,6 @@ dir_list = [i for i in os.listdir(project_dir) if os.path.isdir(os.path.join(pro
 for dirs in dir_list:
     print(dirs)
     # Optional removal of all created pics
-    #clean_folder(project_dir, dirs)
+    clean_folder(project_dir, dirs)
     # go into each folder and create crops of images with different overlap
-    #make_crops(project_dir, dirs, num_crops)
+    make_crops(project_dir, dirs, num_crops)
